@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="SlidingUpPanel">
+        <attr name="minTop" format="integer" />
+    </declare-styleable>
+
+    <declare-styleable name="SlidingUpLayout">
+        <attr name="dragger" format="reference" />
+        <attr name="paddingStart" format="integer" />
+        <attr name="paddingEnd" format="integer" />
+        <attr name="minHeight" format="integer" />
+        <attr name="maxHeight" format="integer" />
+    </declare-styleable>
+
+    <declare-styleable name="SlidingUpLayout.Layout">
+        <attr name="layout_weight" format="float" />
+        <attr name="layout_gravity" format="enum">
+            <enum name="top" value="0x30" />
+            <enum name="bottom" value="0x50" />
+            <enum name="center" value="0x11" />
+            <enum name="center_vertical" value="0x10" />
+            <enum name="center_horizontal" value="0x01" />
+        </attr>
+    </declare-styleable>
+</resources>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SlidingUpPanel</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="content">
+        一生所爱\n\n
+        卢冠廷\n\n
+        从前现在过去了再不来\n
+        红红落叶长埋尘土里\n
+        开始终结总是没变改\n
+        天边的你漂泊白云外\n
+        苦海翻起爱恨\n
+        在世间难逃避命运\n
+        相亲竟不可相近\n
+        或我应该相信是缘分\n
+        情人别后永远再不来\n
+        （消散的情缘）\n
+        无言独坐放眼尘世外\n
+        （原来日再续）\n
+        鲜花虽会凋谢\n
+        （只愿）但会再开（为你）\n
+        一生所爱隐约\n
+        （守候）在白云外（期待）\n
+        苦海翻起爱恨\n
+        在世间难逃避命运\n
+        相亲竟不可相近\n
+        或我应该相信是缘分\n
+        苦海翻起爱恨\n
+        在世间难逃避命运\n
+        相亲竟不可相近\n
+        或我应该相信是缘分\n
+    </string>
+</resources>

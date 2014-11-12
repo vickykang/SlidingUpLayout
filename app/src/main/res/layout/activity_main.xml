@@ -1,0 +1,42 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity"
+    android:background="#bbcdc5">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.0"
+        />
+
+    <com.readboy.slidinguppanel.views.SlidingUpLayout
+        android:layout_width="match_parent"
+        android:layout_height="180dp">
+
+        </com.readboy.slidinguppanel.views.SlidingUpLayout>
+
+    <com.readboy.slidinguppanel.views.SlidingUpPanel
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        app:paddingStart="50">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#3c3c3c3c">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:src="@drawable/image" />
+
+            </ScrollView>
+
+        </com.readboy.slidinguppanel.views.SlidingUpPanel>
+
+</LinearLayout>
