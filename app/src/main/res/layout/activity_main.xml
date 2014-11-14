@@ -5,38 +5,47 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context=".MainActivity"
-    android:background="#bbcdc5">
+    android:background="#ffffff">
 
-    <View
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1.0"
-        />
+        android:layout_marginTop="10dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/overcast"
+            android:gravity="center_horizontal" />
+
+        </ScrollView>
 
     <com.readboy.slidinguppanel.views.SlidingUpLayout
         android:layout_width="match_parent"
-        android:layout_height="180dp">
-
-        </com.readboy.slidinguppanel.views.SlidingUpLayout>
-
-    <com.readboy.slidinguppanel.views.SlidingUpPanel
-        android:layout_width="match_parent"
         android:layout_height="180dp"
-        app:paddingStart="50">
+        android:layout_gravity="center_horizontal"
+        app:gravity="center_horizontal">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:background="#3c3c3c3c" />
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#3c3c3c3c">
+            android:layout_height="wrap_content"
+            android:paddingTop="10dp"
+            android:background="#2b3f3f3f">
 
-            <ImageView
-                android:layout_width="wrap_content"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:src="@drawable/image" />
+                android:text="@string/love_in_life"
+                android:gravity="center_horizontal" />
 
             </ScrollView>
 
-        </com.readboy.slidinguppanel.views.SlidingUpPanel>
+        </com.readboy.slidinguppanel.views.SlidingUpLayout>
 
 </LinearLayout>

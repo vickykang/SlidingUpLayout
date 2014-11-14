@@ -5,11 +5,25 @@
     </declare-styleable>
 
     <declare-styleable name="SlidingUpLayout">
-        <attr name="dragger" format="reference" />
-        <attr name="paddingStart" format="integer" />
-        <attr name="paddingEnd" format="integer" />
-        <attr name="minHeight" format="integer" />
-        <attr name="maxHeight" format="integer" />
+        <attr name="dragger" format="reference|color" />
+        <attr name="minHeight" format="dimension" />
+        <attr name="maxHeight" format="dimension" />
+        <attr name="gravity" format="enum">
+            <enum name="top" value="0x30" />
+            <enum name="bottom" value="0x50" />
+            <enum name="left" value="0x03" />
+            <enum name="right" value="0x05" />
+            <enum name="center_vertical" value="0x10" />
+            <enum name="fill_vertical" value="0x70" />
+            <enum name="center_horizontal" value="0x01" />
+            <enum name="fill_horizontal" value="0x07" />
+            <enum name="center" value="0x11" />
+            <enum name="fill" value="0x77" />
+            <enum name="clip_vertical" value="0x80" />
+            <enum name="clip_horizontal" value="0x08" />
+            <enum name="start" value="0x00800003" />
+            <enum name="end" value="0x00800005" />
+        </attr>
     </declare-styleable>
 
     <declare-styleable name="SlidingUpLayout.Layout">

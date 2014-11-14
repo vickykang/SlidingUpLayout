@@ -12,7 +12,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/content"
+            android:text="@string/love_in_life"
             android:textColor="#ffffff"
             android:gravity="center_horizontal" />
 

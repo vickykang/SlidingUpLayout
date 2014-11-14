@@ -9,6 +9,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewDebug;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 
 import com.readboy.slidinguppanel.R;
@@ -16,14 +18,12 @@ import com.readboy.slidinguppanel.R;
 /**
  * Created by kwd on 2014/11/11.
  */
-public class SlidingUpLayout extends ViewGroup {
+public class SlidingUpLayout extends ViewGroup
+        implements View.OnTouchListener {
 
-    public static final int ORIGIN_TOP = 0;
-    public static final int ORIGIN_BOTTOM = 1;
+    public static final String TAG = SlidingUpLayout.class.getSimpleName();
 
     private static final int DEFAULT_DRAGGER_RESOURCE = R.drawable.selector_btn_dragger;
-    private static final int DEFAULT_PADDING_START = 10;
-    private static final int DEFAULT_PADDING_END = 0;
 
     Button mDraggerBtn;
     Drawable mDraggerDrawable;
@@ -31,12 +31,16 @@ public class SlidingUpLayout extends ViewGroup {
     int mDraggerWidth;
     int mDraggerHeight;
 
-    int mPaddingStart;
-    int mPaddingEnd;
     int mMaxHeight;
     int mMinHeight;
 
     private int mTotalLength;
+
+    private int mGravity = Gravity.START | Gravity.TOP;
+
+    private boolean isBeingDragged = false;
+    protected int lastY;
+    private int originalTop;
 
     public SlidingUpLayout(Context context) {
         this(context, null);
@@ -53,10 +57,13 @@ public class SlidingUpLayout extends ViewGroup {
         mDraggerDrawable = a.getDrawable(R.styleable.SlidingUpLayout_dragger);
         if (mDraggerDrawable == null) mDraggerDrawable = getResources().getDrawable(DEFAULT_DRAGGER_RESOURCE);
 
-        mPaddingStart = a.getInt(R.styleable.SlidingUpLayout_paddingStart, DEFAULT_PADDING_START);
-        mPaddingEnd = a.getInt(R.styleable.SlidingUpLayout_paddingEnd, DEFAULT_PADDING_END);
-        mMaxHeight = a.getInt(R.styleable.SlidingUpLayout_maxHeight, -1);
-        mMinHeight = a.getInt(R.styleable.SlidingUpLayout_minHeight, -1);
+        mMaxHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_maxHeight, -1);
+        mMinHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_minHeight, -1);
+
+        int index = a.getInt(R.styleable.SlidingUpLayout_gravity, -1);
+        if (index >= 0) {
+            setGravity(index);
+        }
 
         a.recycle();
 
@@ -68,15 +75,79 @@ public class SlidingUpLayout extends ViewGroup {
         mDraggerBtn = (Button) findViewById(R.id.btn_dragger);
         mDraggerBtn.setBackground(mDraggerDrawable);
 
-        mDraggerWidth = mDraggerDrawable.getIntrinsicWidth();
-        mDraggerHeight = mDraggerDrawable.getIntrinsicHeight();
+        measureDragger();
 
-        mDraggerBtn.setOnTouchListener(new OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return false;
-            }
-        });
+        mDraggerBtn.setOnTouchListener(this);
+
+        final int defaultMinHeight = mDraggerHeight + getPaddingTop() + getPaddingBottom();
+
+        if (mMaxHeight != -1 && mMaxHeight < defaultMinHeight) {
+            mMaxHeight = defaultMinHeight;
+        }
+        if (mMinHeight != -1 && mMinHeight < defaultMinHeight) {
+            mMinHeight = defaultMinHeight;
+        }
+        if (mMaxHeight != -1 && mMaxHeight < mMinHeight) {
+            mMaxHeight = mMinHeight;
+        }
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                isBeingDragged = false;
+                originalTop = getTop();
+                lastY = (int) event.getRawY();
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                isBeingDragged =  true;
+                int dy = ((int) event.getRawY()) - lastY;
+                slideUp(dy);
+                lastY = (int) event.getRawY();
+                break;
+
+            case MotionEvent.ACTION_UP:
+            default:
+                isBeingDragged = false;
+                break;
+        }
+
+        return false;
+    }
+
+    void slideUp(int dy) {
+        originalTop += dy;
+
+        /**
+         * 最顶部
+         */
+        int maxTopValue = mMinHeight == -1 ?
+                getBottom() - getPaddingBottom() - mDraggerHeight :
+                getBottom() - mMinHeight;
+        if (originalTop > maxTopValue) {
+            originalTop = maxTopValue;
+        }
+
+        /**
+         * 最底部
+         */
+        if (mMaxHeight != -1 && originalTop < getBottom() - mMaxHeight) {
+            originalTop = getBottom() - mMaxHeight;
+        } else if (originalTop < getPaddingTop()) {
+            originalTop = getPaddingTop();
+        }
+
+        setTop(originalTop);
+
+        ViewGroup.LayoutParams lp = getLayoutParams();
+        lp.height = getBottom() - originalTop;
+
+        setLayoutParams(lp);
+
+        requestLayout();
     }
 
     @Override
@@ -313,6 +384,13 @@ public class SlidingUpLayout extends ViewGroup {
         }
     }
 
+    private void measureDragger() {
+        mDraggerBtn.measure(View.MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        mDraggerWidth = mDraggerBtn.getMeasuredWidth();
+        mDraggerHeight = mDraggerBtn.getMeasuredHeight();
+    }
+
     /**
      * <p>Returns the number of children to skip after measuring/laying out
      * the specified child.</p>
@@ -406,7 +484,70 @@ public class SlidingUpLayout extends ViewGroup {
 
         final int count = getChildCount();
 
+        final int majorGravity = mGravity & Gravity.VERTICAL_GRAVITY_MASK;
+        final int minorGravity = mGravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK;
 
+        switch (majorGravity) {
+            case Gravity.BOTTOM:
+                // mTotalLength contains  the padding already
+                childTop = getPaddingTop() + bottom - top - mTotalLength;
+                break;
+
+            case Gravity.CENTER_VERTICAL:
+                // mTotalLength contains the padding already
+                childTop = getPaddingTop() + (bottom - top - mTotalLength) / 2;
+                break;
+
+            case Gravity.TOP:
+            default:
+                childTop = getPaddingTop();
+                break;
+        }
+
+        for (int i = 0; i < count; i++) {
+            final View child = getChildAt(i);
+            if (child == null) {
+                childTop += measureNullChild(i);
+            } else if (child.getVisibility() != GONE) {
+                final int childWidth = child.getMeasuredWidth();
+                final int childHeght = child.getMeasuredHeight();
+
+                final LayoutParams lp = ((LayoutParams) child.getLayoutParams());
+
+                int gravity = lp.gravity;
+                if (gravity < 0) {
+                    gravity = minorGravity;
+                }
+                final int layoutDirection = getLayoutDirection();
+                final int absoluteGravity = Gravity.getAbsoluteGravity(gravity, layoutDirection);
+                switch (absoluteGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                    case Gravity.CENTER_HORIZONTAL:
+                        childLeft = paddingLeft + ((childSpace - childWidth) / 2) +
+                                lp.leftMargin - lp.rightMargin;
+                        break;
+
+                    case Gravity.RIGHT:
+                        childLeft = childRight - childWidth - lp.rightMargin;
+                        break;
+
+                    case Gravity.LEFT:
+                    default:
+                        childLeft = paddingLeft + lp.leftMargin;
+                        break;
+                }
+
+                childTop += lp.topMargin;
+                setChildFrame(child, childLeft, childTop + getLocationOffset(child),
+                        childWidth, childHeght);
+                childTop += childHeght + lp.bottomMargin + getNextLocationOffset(child);
+
+                i += getChildrenSkippedCount(child, i);
+            }
+        }
+    }
+
+    private void setChildFrame(View child, int left, int top, int width, int height) {
+        child.layout(left, top, left + width, top + height);
     }
 
     public void setDraggerBackgroundResource(int resId) {
@@ -429,27 +570,13 @@ public class SlidingUpLayout extends ViewGroup {
             mDraggerWidth = drawable.getIntrinsicWidth();
             mDraggerHeight = drawable.getIntrinsicHeight();
             mDraggerBtn.setBackground(drawable);
+
+            measureDragger();
         }
     }
 
     public Drawable getDraggerBackground() {
         return mDraggerDrawable;
-    }
-
-    public void setPaddingStart(int paddingStart) {
-        mPaddingStart = paddingStart > 0 ? paddingStart : 0;
-    }
-
-    public int getPaddingStart() {
-        return mPaddingStart;
-    }
-
-    public void setPaddingEnd(int paddingEnd) {
-        mPaddingEnd = paddingEnd > 0 ? paddingEnd : 0;
-    }
-
-    public int getPaddingEnd() {
-        return mPaddingEnd;
     }
 
     public void setMaxHeight(int height) {
@@ -468,6 +595,64 @@ public class SlidingUpLayout extends ViewGroup {
         return mMinHeight;
     }
 
+    public void setGravity(int gravity) {
+        if (mGravity != gravity) {
+            if ((gravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK) == 0) {
+                gravity |= Gravity.START;
+            }
+
+            if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == 0) {
+                gravity |= Gravity.TOP;
+            }
+
+            mGravity = gravity;
+            requestLayout();
+        }
+    }
+
+    @Override
+    public LayoutParams generateLayoutParams(AttributeSet attrs) {
+        return new LayoutParams(getContext(), attrs);
+    }
+
+    /**
+     * Return a set of layout parameters with a width of
+     * {@link android.view.ViewGroup.LayoutParams#MATCH_PARENT}
+     * and a height of {@link android.view.ViewGroup.LayoutParams#WRAP_CONTENT}.
+     */
+    @Override
+    protected ViewGroup.LayoutParams generateDefaultLayoutParams() {
+        return new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    }
+
+    @Override
+    protected LayoutParams generateLayoutParams(ViewGroup.LayoutParams p) {
+        return new LayoutParams(p);
+    }
+
+    @Override
+    protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
+        return p instanceof LayoutParams;
+    }
+
+    @Override
+    public void onInitializeAccessibilityEvent(AccessibilityEvent event) {
+        super.onInitializeAccessibilityEvent(event);
+        event.setClassName(SlidingUpLayout.class.getName());
+    }
+
+    @Override
+    public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+        super.onInitializeAccessibilityNodeInfo(info);
+        info.setClassName(SlidingUpLayout.class.getName());
+    }
+
+    /**
+     * Per-child layout information associated with View SlidingUpLayout.
+     *
+     * @attr ref R.styleable#SlidingUpLayout_Layout_layout_weight
+     * @attr ref R.styleable#SlidingUpLayout_Layout_layout_gravity
+     */
     public static class LayoutParams extends MarginLayoutParams {
         /**
          * Indicates how much of the extra space n the SlidingUpLayout will be
