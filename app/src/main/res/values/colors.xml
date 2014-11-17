@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="divider">#ffe9e9e9</color>
+    <color name="btn_common">#d4f2e7</color>
+    <color name="btn_common_pressed">#88ada6</color>
 </resources>

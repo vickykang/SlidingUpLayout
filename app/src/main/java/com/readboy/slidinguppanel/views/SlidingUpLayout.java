@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -59,6 +60,8 @@ public class SlidingUpLayout extends ViewGroup
 
         mMaxHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_maxHeight, -1);
         mMinHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_minHeight, -1);
+        mDraggerWidth = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_draggerWidth, -1);
+        mDraggerHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_draggerHeight, -1);
 
         int index = a.getInt(R.styleable.SlidingUpLayout_gravity, -1);
         if (index >= 0) {
@@ -118,6 +121,12 @@ public class SlidingUpLayout extends ViewGroup
         return false;
     }
 
+    /**
+     * Re-calculate the top position relative to its parent
+     * and its height, then call {@link #requestLayout()}.
+     *
+     * @param dy difference in y-axis
+     */
     void slideUp(int dy) {
         originalTop += dy;
 
@@ -144,8 +153,6 @@ public class SlidingUpLayout extends ViewGroup
 
         ViewGroup.LayoutParams lp = getLayoutParams();
         lp.height = getBottom() - originalTop;
-
-        setLayoutParams(lp);
 
         requestLayout();
     }
@@ -385,10 +392,20 @@ public class SlidingUpLayout extends ViewGroup
     }
 
     private void measureDragger() {
-        mDraggerBtn.measure(View.MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-        mDraggerWidth = mDraggerBtn.getMeasuredWidth();
-        mDraggerHeight = mDraggerBtn.getMeasuredHeight();
+
+        LayoutParams lp = (LayoutParams) mDraggerBtn.getLayoutParams();
+
+        if (mDraggerWidth == -1) {
+            mDraggerWidth = mDraggerDrawable.getIntrinsicWidth();
+        } else {
+            lp.width = mDraggerWidth;
+        }
+
+        if (mDraggerHeight == -1) {
+            mDraggerHeight = mDraggerDrawable.getIntrinsicHeight();
+        } else {
+            lp.height = mDraggerHeight;
+        }
     }
 
     /**
