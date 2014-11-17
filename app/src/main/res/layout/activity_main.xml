@@ -7,6 +7,14 @@
     tools:context=".MainActivity"
     android:background="#ffffff">
 
+    <Button
+        android:id="@+id/btn_change_dragger"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_btn_common"
+        android:text="@string/btn_change_dragger"
+        android:textColor="#ffffff"/>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -22,10 +30,14 @@
         </ScrollView>
 
     <com.readboy.slidinguppanel.views.SlidingUpLayout
+        android:id="@+id/sliding_layout"
         android:layout_width="match_parent"
         android:layout_height="180dp"
         android:layout_gravity="center_horizontal"
-        app:gravity="center_horizontal">
+        app:gravity="center_horizontal"
+        app:dragger="#a4e2c6"
+        app:draggerWidth="80dp"
+        app:draggerHeight="30dp">
 
         <View
             android:layout_width="match_parent"

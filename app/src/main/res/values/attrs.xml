@@ -6,6 +6,8 @@
 
     <declare-styleable name="SlidingUpLayout">
         <attr name="dragger" format="reference|color" />
+        <attr name="draggerWidth" format="dimension" />
+        <attr name="draggerHeight" format="dimension" />
         <attr name="minHeight" format="dimension" />
         <attr name="maxHeight" format="dimension" />
         <attr name="gravity" format="enum">
