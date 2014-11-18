@@ -9,16 +9,15 @@
     <com.readboy.slidinguppanel.views.SlidingUpLayout
         android:id="@+id/sliding_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="500dp"
         android:layout_gravity="center_horizontal"
-        app:gravity="center_horizontal"
-        app:dragger="@drawable/selector_btn_common">
+        android:layout_alignParentBottom="true"
+        app:gravity="center_horizontal">
 
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_weight="1.0"
-            android:layout_marginTop="10dp">
+            app:layout_weight="1.0">
 
             <TextView
                 android:layout_width="match_parent"
@@ -26,13 +25,13 @@
                 android:text="@string/overcast"
                 android:gravity="center_horizontal" />
 
-        </ScrollView>
+            </ScrollView>
 
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="180dp"
             android:paddingTop="10dp"
-            android:background="#2b3f3f3f">
+            android:background="#a4e2c6">
 
             <TextView
                 android:layout_width="match_parent"
