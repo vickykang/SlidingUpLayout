@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -64,7 +65,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         if (mDraggerDrawable == null) mDraggerDrawable = getResources().getDrawable(DEFAULT_DRAGGER_RESOURCE);
 
         mMaxHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_maxHeight, -1);
-        mMinHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_minHeight, -1);
+        mMinHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_minHeight, 0);
         mDraggerWidth = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_draggerWidth, -1);
         mDraggerHeight = a.getDimensionPixelSize(R.styleable.SlidingUpLayout_draggerHeight, -1);
 
@@ -86,17 +87,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         measureDragger();
         mDraggerBtn.setOnTouchListener(this);
 
-        final int defaultMinHeight = mDraggerHeight + getPaddingTop() + getPaddingBottom();
-
-        if (mMaxHeight != -1 && mMaxHeight < defaultMinHeight) {
-            mMaxHeight = defaultMinHeight;
-        }
-        if (mMinHeight != -1 && mMinHeight < defaultMinHeight) {
-            mMinHeight = defaultMinHeight;
-        }
-        if (mMaxHeight != -1 && mMaxHeight < mMinHeight) {
-            mMaxHeight = mMinHeight;
-        }
+        if (mMaxHeight != -1 && mMaxHeight < mMinHeight) mMaxHeight = mMinHeight;
     }
 
     @Override
@@ -105,8 +96,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 isBeingDragged = false;
-                if (mUpperView == null) originalTop = getTop();
-                else  originalTop = v.getTop();
+                originalTop = v.getTop();
                 lastY = (int) event.getRawY();
                 break;
 
@@ -135,59 +125,23 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
     void slideUp(int dy) {
         originalTop += dy;
 
-        if (mUpperView == null) {
-            /**
-             * 最底部
-             */
-            int maxTopValue = mMinHeight == -1 ?
-                    getBottom() - getPaddingBottom() - mDraggerHeight :
-                    getBottom() - mMinHeight;
-            if (originalTop > maxTopValue) {
-                originalTop = maxTopValue;
-            }
+        // originalTop 最大值
+        if (originalTop > mSlideView.getBottom() - mMinHeight - mDraggerHeight)
+            originalTop = mSlideView.getBottom() - mMinHeight - mDraggerHeight;
 
-            /**
-             * 最顶部
-             */
-            if (mMaxHeight != -1 && originalTop < getBottom() - mMaxHeight) {
-                originalTop = getBottom() - mMaxHeight;
-            } else if (originalTop < getPaddingTop()) {
-                originalTop = getPaddingTop();
-            }
+        if (mMaxHeight != -1 && originalTop < mSlideView.getBottom() - mMaxHeight - mDraggerHeight)
+            originalTop = mSlideView.getBottom() - mMaxHeight - mDraggerHeight;
 
-            setTop(originalTop);
-            getLayoutParams().height = getBottom() - originalTop;
+        // originalTop 最小值
+        if (originalTop < 0) originalTop = 0;
 
-        } else {
+        LayoutParams slideLp = (LayoutParams) mSlideView.getLayoutParams();
+        slideLp.height = mSlideView.getBottom() - originalTop - mDraggerHeight;
 
-            if (originalTop < 0)
-                originalTop = 0;
-
-            int slideViewHeight = mSlideView.getBottom() - originalTop - mDraggerHeight;
-
-            if (mMinHeight != -1 && slideViewHeight < mMinHeight)
-                slideViewHeight = mMinHeight;
-            if (mMaxHeight != -1 && slideViewHeight > mMaxHeight)
-                slideViewHeight = mMaxHeight;
-            if (slideViewHeight < 0)
-                slideViewHeight = 0;
-
-            LayoutParams slideLp = (LayoutParams) mSlideView.getLayoutParams();
-            int slideViewTop = mSlideView.getBottom() - slideViewHeight + slideLp.topMargin;
-            originalTop = slideViewTop - slideLp.topMargin - mDraggerHeight;
-
-            mSlideView.setTop(slideViewTop);
-            slideLp.height = slideViewHeight;
-
+        if (mUpperView != null)
             mDraggerBtn.setTop(originalTop);
-
-            LayoutParams upperLp = (LayoutParams) mUpperView.getLayoutParams();
-            if (upperLp.weight <= 0.0f) {
-                int upperViewBottom = mUpperView.getTop() - slideViewTop - slideLp.topMargin - upperLp.bottomMargin;
-                mUpperView.setBottom(upperViewBottom);
-                upperLp.height = upperViewBottom - mUpperView.getTop();
-            }
-        }
+        else
+            mSlideView.setTop(originalTop + mDraggerHeight);
 
         requestLayout();
     }
@@ -449,6 +403,8 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         if (lp == null)
             lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
 
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+
         Drawable defaultDraggerDrawable = getResources().getDrawable(DEFAULT_DRAGGER_RESOURCE);
 
         if (mDraggerWidth == -1) {
@@ -466,7 +422,6 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
 
         mDraggerBtn.measure(MeasureSpec.makeMeasureSpec(mDraggerWidth, MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(mDraggerHeight, MeasureSpec.EXACTLY));
-
     }
 
     /**
@@ -615,8 +570,17 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
                 }
 
                 childTop += lp.topMargin;
+
                 if (mDraggerBtn.getId() == i && mUpperView != null) {
                     childTop -= mDraggerHeight;
+                } else if (mDraggerBtn.getId() == i && mUpperView == null) {
+                    continue;
+                } else if (count - 1 == i) {
+                    childTop = bottom - top - getPaddingTop() - getPaddingBottom() - lp.bottomMargin - childHeght;
+                    int draggerTop = childTop - mDraggerHeight;
+                    int draggerLeft = paddingLeft + (childSpace - mDraggerWidth) / 2;
+                    setChildFrame(mDraggerBtn, draggerLeft, draggerTop + getLocationOffset(mDraggerBtn),
+                            mDraggerWidth, mDraggerHeight);
                 }
 
                 setChildFrame(child, childLeft, childTop + getLocationOffset(child),
