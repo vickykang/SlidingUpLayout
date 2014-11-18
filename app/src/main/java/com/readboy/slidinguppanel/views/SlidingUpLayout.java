@@ -1,10 +1,11 @@
 package com.readboy.slidinguppanel.views;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -12,6 +13,7 @@ import android.view.ViewDebug;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 
 import com.readboy.slidinguppanel.R;
@@ -24,6 +26,8 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
     public static final String TAG = SlidingUpLayout.class.getSimpleName();
 
     protected static final int DEFAULT_DRAGGER_RESOURCE = R.drawable.selector_btn_dragger;
+    protected static final int DEFAULT_ANIMATOR_DURATION = 250;
+    protected static final float DEFAULT_DIFFERENCE = 50.0f;
 
     protected static final int MAX_CHILD_COUNT = 3;
 
@@ -90,24 +94,30 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         if (mMaxHeight != -1 && mMaxHeight < mMinHeight) mMaxHeight = mMinHeight;
     }
 
+    int dy;
+
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-
+        int deltaY = 0;
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 isBeingDragged = false;
                 originalTop = v.getTop();
                 lastY = (int) event.getRawY();
+                deltaY = originalTop;
                 break;
 
             case MotionEvent.ACTION_MOVE:
                 isBeingDragged =  true;
-                int dy = ((int) event.getRawY()) - lastY;
+                dy = ((int) event.getRawY()) - lastY;
                 slideUp(dy);
                 lastY = (int) event.getRawY();
                 break;
 
             case MotionEvent.ACTION_UP:
+                isBeingDragged = false;
+                playAnimation(deltaY - v.getTop());
+                break;
             default:
                 isBeingDragged = false;
                 break;
@@ -146,9 +156,44 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         requestLayout();
     }
 
+    /**
+     * 动画效果
+     */
+    private void playAnimation(int dy) {
+        if (dy != 0) {
+            final float diff = dy / Math.abs(dy) * DEFAULT_DIFFERENCE;
+
+            ObjectAnimator previousDraggerAnim = ObjectAnimator.ofFloat(mDraggerBtn, "translationY", 0f, diff).
+                    setDuration(DEFAULT_ANIMATOR_DURATION);
+            previousDraggerAnim.setInterpolator(new OvershootInterpolator(1.2f));
+
+            ObjectAnimator posteriorDraggerAnim = ObjectAnimator.ofFloat(mDraggerBtn, "translationY", diff, 0).
+                    setDuration(DEFAULT_ANIMATOR_DURATION);
+            posteriorDraggerAnim.setInterpolator(new OvershootInterpolator(1.2f));
+
+            ObjectAnimator previousSlideAnim = ObjectAnimator.ofFloat(mSlideView, "translationY", 0f, diff).
+                    setDuration(DEFAULT_ANIMATOR_DURATION);
+            previousSlideAnim.setInterpolator(new OvershootInterpolator(1.2f));
+
+            ObjectAnimator posteriorSlideAnim = ObjectAnimator.ofFloat(mSlideView, "translationY", diff, 0).
+                    setDuration(DEFAULT_ANIMATOR_DURATION);
+            posteriorSlideAnim.setInterpolator(new OvershootInterpolator(1.2f));
+
+            AnimatorSet draggerSet = new AnimatorSet();
+            draggerSet.play(previousDraggerAnim).before(posteriorDraggerAnim);
+
+            AnimatorSet slideSet = new AnimatorSet();
+            slideSet.play(previousSlideAnim).before(posteriorSlideAnim);
+
+            draggerSet.start();
+            slideSet.start();
+        }
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (!hasDragger && getChildCount() > 0 && getChildCount() < MAX_CHILD_COUNT) {
+
+        if (!hasDragger && getChildCount() > 0) {
             hasDragger = true;
             mDraggerBtn.setId(getChildCount() - 1);
             addView(mDraggerBtn, getChildCount() - 1);
@@ -576,6 +621,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
                 } else if (mDraggerBtn.getId() == i && mUpperView == null) {
                     continue;
                 } else if (count - 1 == i) {
+                    // slide view: 一直处于父容器的底部
                     childTop = bottom - top - getPaddingTop() - getPaddingBottom() - lp.bottomMargin - childHeght;
                     int draggerTop = childTop - mDraggerHeight;
                     int draggerLeft = paddingLeft + (childSpace - mDraggerWidth) / 2;
@@ -623,45 +669,37 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
 
     @Override
     public void addView(View child) {
-        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
-                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
-            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
-        }
-        super.addView(child);
+
+        this.addView(child, -1);
     }
 
     @Override
     public void addView(View child, int index) {
-        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
-                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
-            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
-        }
+        if (getChildCount() > MAX_CHILD_COUNT - 1)
+            throw new IllegalStateException("SlidingUpLayout can only host two direct children (not counting the default dragger button)");
+
         super.addView(child, index);
     }
 
     @Override
     public void addView(View child, ViewGroup.LayoutParams params) {
-        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
-                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
-            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
-        }
-        super.addView(child, params);
+        this.addView(child, -1, params);
     }
 
     @Override
     public void addView(View child, int index, ViewGroup.LayoutParams params) {
-        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
-                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
-            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
-        }
+
+        if (getChildCount() > MAX_CHILD_COUNT)
+            throw new IllegalStateException("SlidingUpLayout can only host two direct children (not counting the default dragger button)");
+
         super.addView(child, index, params);
     }
 
     @Override
     public void addView(View child, int width, int height) {
-        if (getChildCount() > MAX_CHILD_COUNT) {
-            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
-        }
+        if (getChildCount() > MAX_CHILD_COUNT)
+            throw new IllegalStateException("SlidingUpLayout can only host two direct children (not counting the default dragger button)");
+
         super.addView(child, width, height);
     }
 
