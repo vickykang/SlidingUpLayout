@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -17,14 +16,18 @@ import android.widget.Button;
 import com.readboy.slidinguppanel.R;
 
 /**
- * Created by kwd on 2014/11/11.
+ * Created by kwd on 2014/11/17.
  */
-public class SlidingUpLayout extends ViewGroup
-        implements View.OnTouchListener {
+public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
 
     public static final String TAG = SlidingUpLayout.class.getSimpleName();
 
-    private static final int DEFAULT_DRAGGER_RESOURCE = R.drawable.selector_btn_dragger;
+    protected static final int DEFAULT_DRAGGER_RESOURCE = R.drawable.selector_btn_dragger;
+
+    protected static final int MAX_CHILD_COUNT = 3;
+
+    protected View mUpperView;
+    protected View mSlideView;
 
     Button mDraggerBtn;
     Drawable mDraggerDrawable;
@@ -42,6 +45,8 @@ public class SlidingUpLayout extends ViewGroup
     private boolean isBeingDragged = false;
     protected int lastY;
     private int originalTop;
+
+    protected boolean hasDragger = false;
 
     public SlidingUpLayout(Context context) {
         this(context, null);
@@ -73,21 +78,13 @@ public class SlidingUpLayout extends ViewGroup
     }
 
     protected void init() {
-        //inflate(getContext(), R.layout.view_sliding_up_layout, this);
-        //mDraggerBtn = (Button) findViewById(R.id.btn_dragger);
-
         /**
          * Initialize dragger button.
          */
         mDraggerBtn = new Button(getContext());
-
         mDraggerBtn.setBackground(mDraggerDrawable);
-
         measureDragger();
-
         mDraggerBtn.setOnTouchListener(this);
-
-        addView(mDraggerBtn, 0);
 
         final int defaultMinHeight = mDraggerHeight + getPaddingTop() + getPaddingBottom();
 
@@ -100,7 +97,6 @@ public class SlidingUpLayout extends ViewGroup
         if (mMaxHeight != -1 && mMaxHeight < mMinHeight) {
             mMaxHeight = mMinHeight;
         }
-
     }
 
     @Override
@@ -109,7 +105,8 @@ public class SlidingUpLayout extends ViewGroup
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 isBeingDragged = false;
-                originalTop = getTop();
+                if (mUpperView == null) originalTop = getTop();
+                else  originalTop = v.getTop();
                 lastY = (int) event.getRawY();
                 break;
 
@@ -138,37 +135,74 @@ public class SlidingUpLayout extends ViewGroup
     void slideUp(int dy) {
         originalTop += dy;
 
-        /**
-         * 最底部
-         */
-        int maxTopValue = mMinHeight == -1 ?
-                getBottom() - getPaddingBottom() - mDraggerHeight :
-                getBottom() - mMinHeight;
-        if (originalTop > maxTopValue) {
-            originalTop = maxTopValue;
+        if (mUpperView == null) {
+            /**
+             * 最底部
+             */
+            int maxTopValue = mMinHeight == -1 ?
+                    getBottom() - getPaddingBottom() - mDraggerHeight :
+                    getBottom() - mMinHeight;
+            if (originalTop > maxTopValue) {
+                originalTop = maxTopValue;
+            }
+
+            /**
+             * 最顶部
+             */
+            if (mMaxHeight != -1 && originalTop < getBottom() - mMaxHeight) {
+                originalTop = getBottom() - mMaxHeight;
+            } else if (originalTop < getPaddingTop()) {
+                originalTop = getPaddingTop();
+            }
+
+            setTop(originalTop);
+            getLayoutParams().height = getBottom() - originalTop;
+
+        } else {
+
+            if (originalTop < 0)
+                originalTop = 0;
+
+            int slideViewHeight = mSlideView.getBottom() - originalTop - mDraggerHeight;
+
+            if (mMinHeight != -1 && slideViewHeight < mMinHeight)
+                slideViewHeight = mMinHeight;
+            if (mMaxHeight != -1 && slideViewHeight > mMaxHeight)
+                slideViewHeight = mMaxHeight;
+            if (slideViewHeight < 0)
+                slideViewHeight = 0;
+
+            LayoutParams slideLp = (LayoutParams) mSlideView.getLayoutParams();
+            int slideViewTop = mSlideView.getBottom() - slideViewHeight + slideLp.topMargin;
+            originalTop = slideViewTop - slideLp.topMargin - mDraggerHeight;
+
+            mSlideView.setTop(slideViewTop);
+            slideLp.height = slideViewHeight;
+
+            mDraggerBtn.setTop(originalTop);
+
+            LayoutParams upperLp = (LayoutParams) mUpperView.getLayoutParams();
+            if (upperLp.weight <= 0.0f) {
+                int upperViewBottom = mUpperView.getTop() - slideViewTop - slideLp.topMargin - upperLp.bottomMargin;
+                mUpperView.setBottom(upperViewBottom);
+                upperLp.height = upperViewBottom - mUpperView.getTop();
+            }
         }
-
-        /**
-         * 最顶部
-         */
-        if (mMaxHeight != -1 && originalTop < getBottom() - mMaxHeight) {
-            originalTop = getBottom() - mMaxHeight;
-        } else if (originalTop < getPaddingTop()) {
-            originalTop = getPaddingTop();
-        }
-
-        setTop(originalTop);
-
-        ViewGroup.LayoutParams lp = getLayoutParams();
-        lp.height = getBottom() - originalTop;
 
         requestLayout();
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (getChildCount() < 2)
-            throw new IllegalArgumentException("SlidingUpLayout should have two children at least!");
+        if (!hasDragger && getChildCount() > 0 && getChildCount() < MAX_CHILD_COUNT) {
+            hasDragger = true;
+            mDraggerBtn.setId(getChildCount() - 1);
+            addView(mDraggerBtn, getChildCount() - 1);
+
+            mSlideView = getChildAt(getChildCount() - 1);
+            if (getChildCount() == MAX_CHILD_COUNT)
+                mUpperView = getChildAt(0);
+        }
 
         measureVertical(widthMeasureSpec, heightMeasureSpec);
     }
@@ -191,6 +225,9 @@ public class SlidingUpLayout extends ViewGroup
         boolean skippedMeasure = false;
 
         for (int i = 0; i < count; i++) {
+            if (i == mDraggerBtn.getId() && mUpperView != null)
+                continue;
+
             final View child = getChildAt(i);
 
             if (child == null) {
@@ -226,13 +263,16 @@ public class SlidingUpLayout extends ViewGroup
                     lp.height = LayoutParams.WRAP_CONTENT;
                 }
 
+
                 // Determine how big this child would like to be. If this or
                 // previous children have given a weight, then we allow it to
                 // use all available space (and we will shrink things later
-                // if needed).
-                measureChildBeforeLayout(
-                        child, i, widthMeasureSpec, 0, heightMeasureSpec,
-                        totalWeight == 0 ? mTotalLength : 0);
+                // if needed). The dragger button has already been measured.
+                if (i != mDraggerBtn.getId()) {
+                    measureChildBeforeLayout(
+                            child, i, widthMeasureSpec, 0, heightMeasureSpec,
+                            totalWeight == 0 ? mTotalLength : 0);
+                }
 
                 if (oldHeight != Integer.MIN_VALUE) {
                     lp.height = oldHeight;
@@ -242,6 +282,7 @@ public class SlidingUpLayout extends ViewGroup
                 final int totalLength = mTotalLength;
                 mTotalLength = Math.max(totalLength, totalLength + childHeight + lp.topMargin +
                         lp.bottomMargin + getNextLocationOffset(child));
+
             }
 
             boolean matchWidthLocally = false;
@@ -303,7 +344,7 @@ public class SlidingUpLayout extends ViewGroup
                     continue;
                 }
 
-                LayoutParams lp = ((LayoutParams) child.getLayoutParams());
+                LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
                 float childExtra = lp.weight;
                 if (childExtra > 0) {
@@ -311,16 +352,15 @@ public class SlidingUpLayout extends ViewGroup
                     int share = (int) (childExtra * delta / weightSum);
                     weightSum -= childExtra;
                     delta -= share;
-
                     final int childWidthMeasureSpec = getChildMeasureSpec(widthMeasureSpec,
                             getPaddingLeft() + getPaddingRight() +
                                     lp.leftMargin + lp.rightMargin, lp.width);
 
                     // TODO: Use a field like lp.isMeasured to figure out if this
                     // child has been previously measured
-                    if ((lp.height != 0) || heightMode != MeasureSpec.EXACTLY) {
+                    if ((lp.height != 0) || (heightMode != MeasureSpec.EXACTLY)) {
                         // child was measured once already above...
-                        // bas new measurement on stored values
+                        // base new measurement on stored values
                         int childHeight = child.getMeasuredHeight() + share;
                         if (childHeight < 0) {
                             childHeight = 0;
@@ -332,7 +372,8 @@ public class SlidingUpLayout extends ViewGroup
                         // child was skipped in the loop above.
                         // Measure for this first time here
                         child.measure(childWidthMeasureSpec,
-                                MeasureSpec.makeMeasureSpec(share > 0 ? share : 0, MeasureSpec.EXACTLY));
+                                MeasureSpec.makeMeasureSpec(share > 0 ? share : 0,
+                                        MeasureSpec.EXACTLY));
                     }
 
                     childState = combineMeasuredStates(childState, child.getMeasuredState()
@@ -408,19 +449,24 @@ public class SlidingUpLayout extends ViewGroup
         if (lp == null)
             lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
 
+        Drawable defaultDraggerDrawable = getResources().getDrawable(DEFAULT_DRAGGER_RESOURCE);
+
         if (mDraggerWidth == -1) {
-            mDraggerWidth = mDraggerDrawable.getIntrinsicWidth();
+            mDraggerWidth = defaultDraggerDrawable.getIntrinsicWidth();
         } else {
             lp.width = mDraggerWidth;
         }
-
         if (mDraggerHeight == -1) {
-            mDraggerHeight = mDraggerDrawable.getIntrinsicHeight();
+            mDraggerHeight = defaultDraggerDrawable.getIntrinsicHeight();
         } else {
             lp.height = mDraggerHeight;
         }
 
         mDraggerBtn.setLayoutParams(lp);
+
+        mDraggerBtn.measure(MeasureSpec.makeMeasureSpec(mDraggerWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(mDraggerHeight, MeasureSpec.EXACTLY));
+
     }
 
     /**
@@ -569,6 +615,10 @@ public class SlidingUpLayout extends ViewGroup
                 }
 
                 childTop += lp.topMargin;
+                if (mDraggerBtn.getId() == i && mUpperView != null) {
+                    childTop -= mDraggerHeight;
+                }
+
                 setChildFrame(child, childLeft, childTop + getLocationOffset(child),
                         childWidth, childHeght);
                 childTop += childHeght + lp.bottomMargin + getNextLocationOffset(child);
@@ -605,6 +655,50 @@ public class SlidingUpLayout extends ViewGroup
 
             measureDragger();
         }
+    }
+
+    @Override
+    public void addView(View child) {
+        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
+                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
+            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
+        }
+        super.addView(child);
+    }
+
+    @Override
+    public void addView(View child, int index) {
+        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
+                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
+            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
+        }
+        super.addView(child, index);
+    }
+
+    @Override
+    public void addView(View child, ViewGroup.LayoutParams params) {
+        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
+                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
+            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
+        }
+        super.addView(child, params);
+    }
+
+    @Override
+    public void addView(View child, int index, ViewGroup.LayoutParams params) {
+        if ((hasDragger && getChildCount() > MAX_CHILD_COUNT)
+                || (!hasDragger && getChildCount() > MAX_CHILD_COUNT - 1)) {
+            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
+        }
+        super.addView(child, index, params);
+    }
+
+    @Override
+    public void addView(View child, int width, int height) {
+        if (getChildCount() > MAX_CHILD_COUNT) {
+            throw new IllegalStateException("SlidingUpLayout can only hold two direct children (not counting the default dragger button)");
+        }
+        super.addView(child, width, height);
     }
 
     public Drawable getDraggerBackground() {
@@ -701,10 +795,8 @@ public class SlidingUpLayout extends ViewGroup
         @ViewDebug.ExportedProperty(category = "layout", mapping= {
                 @ViewDebug.IntToString(from = -1, to = "NONE"),
                 @ViewDebug.IntToString(from = Gravity.NO_GRAVITY, to = "NONE"),
-                @ViewDebug.IntToString(from = Gravity.TOP, to = "TOP"),
-                @ViewDebug.IntToString(from = Gravity.BOTTOM, to = "BOTTOM"),
-                @ViewDebug.IntToString(from = Gravity.CENTER, to = "CENTER"),
-                @ViewDebug.IntToString(from = Gravity.CENTER_VERTICAL, to = "CENTER_VERTICAL"),
+                @ViewDebug.IntToString(from = Gravity.LEFT, to = "LEFT"),
+                @ViewDebug.IntToString(from = Gravity.RIGHT, to = "RIGHT"),
                 @ViewDebug.IntToString(from = Gravity.CENTER_HORIZONTAL, to = "CENTER_HORIZONTAL")
         })
         public int gravity = -1;

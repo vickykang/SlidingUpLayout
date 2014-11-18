@@ -1,18 +1,18 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     tools:context=".MainActivity"
     android:background="#ffffff">
 
-    <com.readboy.slidinguppanel.views.SubstituteLayout
+    <com.readboy.slidinguppanel.views.SlidingUpLayout
         android:id="@+id/sliding_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center_horizontal"
-        app:gravity="center_horizontal">
+        app:gravity="center_horizontal"
+        app:dragger="@drawable/selector_btn_common">
 
         <ScrollView
             android:layout_width="match_parent"
@@ -42,6 +42,6 @@
 
             </ScrollView>
 
-        </com.readboy.slidinguppanel.views.SubstituteLayout>
+        </com.readboy.slidinguppanel.views.SlidingUpLayout>
 
-</LinearLayout>
+</RelativeLayout>
