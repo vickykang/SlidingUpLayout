@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -94,11 +95,10 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
         if (mMaxHeight != -1 && mMaxHeight < mMinHeight) mMaxHeight = mMinHeight;
     }
 
-    int dy;
+    int deltaY = 0;
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        int deltaY = 0;
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 isBeingDragged = false;
@@ -109,14 +109,14 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
 
             case MotionEvent.ACTION_MOVE:
                 isBeingDragged =  true;
-                dy = ((int) event.getRawY()) - lastY;
+                int dy = ((int) event.getRawY()) - lastY;
                 slideUp(dy);
                 lastY = (int) event.getRawY();
                 break;
 
             case MotionEvent.ACTION_UP:
                 isBeingDragged = false;
-                playAnimation(deltaY - v.getTop());
+                playAnimation(deltaY - originalTop);
                 break;
             default:
                 isBeingDragged = false;
@@ -161,7 +161,9 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
      */
     private void playAnimation(int dy) {
         if (dy != 0) {
-            final float diff = dy / Math.abs(dy) * DEFAULT_DIFFERENCE;
+            final float diff;
+            if (dy < 0) diff = DEFAULT_DIFFERENCE;
+            else diff = -DEFAULT_DIFFERENCE;
 
             ObjectAnimator previousDraggerAnim = ObjectAnimator.ofFloat(mDraggerBtn, "translationY", 0f, diff).
                     setDuration(DEFAULT_ANIMATOR_DURATION);
@@ -193,7 +195,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
-        if (!hasDragger && getChildCount() > 0) {
+        if (!hasDragger && getChildCount() == MAX_CHILD_COUNT - 1) {
             hasDragger = true;
             mDraggerBtn.setId(getChildCount() - 1);
             addView(mDraggerBtn, getChildCount() - 1);
@@ -620,7 +622,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
                     childTop -= mDraggerHeight;
                 } else if (mDraggerBtn.getId() == i && mUpperView == null) {
                     continue;
-                } else if (count - 1 == i) {
+                } else if (count > 1 && count - 1 == i) {
                     // slide view: 一直处于父容器的底部
                     childTop = bottom - top - getPaddingTop() - getPaddingBottom() - lp.bottomMargin - childHeght;
                     int draggerTop = childTop - mDraggerHeight;
