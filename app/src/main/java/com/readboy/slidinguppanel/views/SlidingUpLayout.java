@@ -196,13 +196,15 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
         if (!hasDragger && getChildCount() == MAX_CHILD_COUNT - 1) {
-            hasDragger = true;
-            mDraggerBtn.setId(getChildCount() - 1);
-            addView(mDraggerBtn, getChildCount() - 1);
-
+            mUpperView = getChildAt(0);
             mSlideView = getChildAt(getChildCount() - 1);
-            if (getChildCount() == MAX_CHILD_COUNT)
-                mUpperView = getChildAt(0);
+
+            if (!(mUpperView.getVisibility() == View.GONE)
+                    && !(mSlideView.getVisibility() == View.GONE)) {
+                hasDragger = true;
+                mDraggerBtn.setId(getChildCount() - 1);
+                addView(mDraggerBtn, getChildCount() - 1);
+            }
         }
 
         measureVertical(widthMeasureSpec, heightMeasureSpec);
@@ -622,7 +624,7 @@ public class SlidingUpLayout extends ViewGroup implements View.OnTouchListener {
                     childTop -= mDraggerHeight;
                 } else if (mDraggerBtn.getId() == i && mUpperView == null) {
                     continue;
-                } else if (count > 1 && count - 1 == i) {
+                } else if (count > 1 && count - 1 == i && mUpperView.getVisibility() != View.GONE) {
                     // slide view: 一直处于父容器的底部
                     childTop = bottom - top - getPaddingTop() - getPaddingBottom() - lp.bottomMargin - childHeght;
                     int draggerTop = childTop - mDraggerHeight;
